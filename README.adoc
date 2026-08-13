@@ -3,6 +3,19 @@
 
 = Khronos Vulkan^®^ Tutorial
 
+== Fork Purpose
+
+This repository is a personal learning fork of the
+link:https://github.com/KhronosGroup/Vulkan-Tutorial[official Khronos Vulkan Tutorial].
+Its purpose is to follow the tutorial with a cumulative implementation in
+link:workthrough/[`workthrough/`] while retaining the official documentation and
+reference examples for comparison.
+
+The tutorial sources and numbered examples remain based on the upstream project
+and are periodically synchronized from it. Personal learning code belongs in
+`workthrough/`; changes there are not intended as modifications to the official
+tutorial.
+
 == Attribution
 
 The Khronos Vulkan^®^ Tutorial is based on the "link:https://vulkan-tutorial.com/[Vulkan Tutorial]" by Alexander Overvoorde licensed under link:https://creativecommons.org/licenses/by-sa/4.0/[CC BY-SA 4.0].
