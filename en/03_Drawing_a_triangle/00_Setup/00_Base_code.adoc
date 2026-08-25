@@ -208,10 +208,19 @@ private:
     }
 ----
 
-The very first call in `initWindow` should be `glfwInit()`, which initializes
-the GLFW library. Because GLFW was originally designed to create an OpenGL
-context, we need to tell it to not create an OpenGL context with a later
-call:
+The `glfwInit()` call initializes the GLFW library. On macOS, provide GLFW with
+Vulkan's loader before initializing it:
+
+[,c++]
+----
+#ifdef __APPLE__
+    glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
+glfwInit();
+----
+
+Because GLFW was originally designed to create an OpenGL context, we need to
+tell it to not create an OpenGL context with a later call:
 
 [,c++]
 ----
@@ -268,6 +277,9 @@ You should now have a `initWindow` function that looks like this:
 [,c++]
 ----
 void initWindow() {
+#ifdef __APPLE__
+    glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);

@@ -414,6 +414,9 @@ void AndroidPlatform::EnablePowerSavingMode(bool enable) {
 // Desktop platform implementation
 
 bool DesktopPlatform::Initialize(const std::string& appName, int requestedWidth, int requestedHeight) {
+#ifdef __APPLE__
+  glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
   if (!glfwInit()) {
     throw std::runtime_error("Failed to initialize GLFW");
   }

@@ -19,6 +19,9 @@ public:
         loadLabels(labelPath);
 
         // 1. Initialize GLFW & Window
+#ifdef __APPLE__
+        glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize GLFW");
         }
@@ -42,20 +45,20 @@ public:
 
         // 4. Setup display texture
         createDisplayResources();
-        
+
         std::cout << "Vulkan Real-Time Classifier ready." << std::endl;
     }
 
     ~RealTimeClassifier() {
         if (renderer) renderer->WaitIdle();
-        
+
         // Destroy all Vulkan resources before the window is destroyed.
         // These members must be cleared while renderer (and its device/surface) is still alive.
         displaySampler = nullptr;
         displayView = nullptr;
         displayMemory = nullptr;
         displayImage = nullptr;
-        
+
         preprocessor.reset();
         imguiSystem.reset();
         renderer.reset();
@@ -82,7 +85,7 @@ public:
             } else {
                 // Dummy frame for simulation
                 frame = cv::Mat::zeros(480, 640, CV_8UC3);
-                cv::putText(frame, "No camera found. Simulation mode.", cv::Point(50, 240), 
+                cv::putText(frame, "No camera found. Simulation mode.", cv::Point(50, 240),
                             cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
             }
 
@@ -91,10 +94,10 @@ public:
             // 1. Update display and process ML in one go
             if (renderer->BeginFrame()) {
                 processFrame(frame);
-                
+
                 imguiSystem->NewFrame();
                 drawUI();
-                
+
                 imguiSystem->Render(renderer->GetCurrentCommandBuffer(), renderer->GetCurrentFrame());
                 renderer->EndFrame();
             }
@@ -119,7 +122,7 @@ private:
         };
 
         displayImage = vk::raii::Image(renderer->GetRaiiDevice(), imageInfo);
-        
+
         auto memReqs = displayImage.getMemoryRequirements();
         vk::MemoryAllocateInfo allocInfo{
             .allocationSize = memReqs.size,
@@ -153,18 +156,18 @@ private:
         cv::cvtColor(frame, rgba, cv::COLOR_BGR2RGBA);
 
         size_t size = rgba.total() * rgba.elemSize();
-        
+
         // Use a temporary staging buffer for upload
         vk::BufferCreateInfo stagingInfo{
-            .size = size, 
+            .size = size,
             .usage = vk::BufferUsageFlagBits::eTransferSrc
         };
         vk::raii::Buffer stagingBuffer(renderer->GetRaiiDevice(), stagingInfo);
-        
+
         auto memReqs = stagingBuffer.getMemoryRequirements();
         vk::MemoryAllocateInfo allocInfo{
             .allocationSize = memReqs.size,
-            .memoryTypeIndex = renderer->FindMemoryType(memReqs.memoryTypeBits, 
+            .memoryTypeIndex = renderer->FindMemoryType(memReqs.memoryTypeBits,
                 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
         };
         vk::raii::DeviceMemory stagingMem(renderer->GetRaiiDevice(), allocInfo);
@@ -174,10 +177,10 @@ private:
         std::memcpy(data, rgba.data, size);
         stagingMem.unmapMemory();
 
-        renderer->TransitionImageLayout(*displayImage, vk::Format::eR8G8B8A8Unorm, 
+        renderer->TransitionImageLayout(*displayImage, vk::Format::eR8G8B8A8Unorm,
             vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
         renderer->CopyBufferToImage(*stagingBuffer, *displayImage, rgba.cols, rgba.rows);
-        renderer->TransitionImageLayout(*displayImage, vk::Format::eR8G8B8A8Unorm, 
+        renderer->TransitionImageLayout(*displayImage, vk::Format::eR8G8B8A8Unorm,
             vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 
@@ -197,8 +200,8 @@ private:
         // Fullscreen camera background
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-        ImGui::Begin("CameraBackground", nullptr, 
-            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | 
+        ImGui::Begin("CameraBackground", nullptr,
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground |
             ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoInputs);
 
         if (displayTexID != 0) {
@@ -211,9 +214,9 @@ private:
         ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - overlayWidth - 20, 20), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(overlayWidth, 0), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.7f); // Semi-transparent
-        
+
         ImGui::Begin("Classification Results", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
-        
+
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "MobileNetV2 Predictions");
         ImGui::Separator();
 
@@ -224,18 +227,18 @@ private:
                 std::string label = (static_cast<size_t>(classId) < labels.size()) ? labels[classId] : "Unknown";
 
                 ImGui::PushID(static_cast<int>(i));
-                
+
                 // Show rank and label (wrapped to prevent cropping)
                 ImGui::Text("%zu. %s", i + 1, label.c_str());
-                
+
                 // Confidence bar
                 char buf[32];
                 snprintf(buf, sizeof(buf), "%.1f%%", confidence * 100.0f);
                 ImGui::ProgressBar(confidence, ImVec2(-1, 0), buf);
-                
+
                 ImGui::PopID();
             }
-            
+
             ImGui::Separator();
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Performance:");
             ImGui::BulletText("Inference: %.1f ms", lastResult.inferenceTimeMs);
@@ -243,13 +246,13 @@ private:
         } else {
             ImGui::Text("Initializing camera...");
         }
-        
+
         ImGui::Spacing();
         ImGui::Separator();
         if (ImGui::Button("Close Application", ImVec2(-1, 0))) {
             glfwSetWindowShouldClose(window, true);
         }
-        
+
         ImGui::End();
     }
 
@@ -267,7 +270,7 @@ private:
     std::unique_ptr<ImGuiSystem> imguiSystem;
     std::unique_ptr<VulkanPreprocessor> preprocessor;
     std::vector<std::string> labels;
-    
+
     // Display resources
     vk::raii::Image displayImage = nullptr;
     vk::raii::DeviceMemory displayMemory = nullptr;

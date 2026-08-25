@@ -80,6 +80,9 @@ void Application::initGLFWWindow()
     util::log_msg("[Init] Init GLFW window");
     // GLFW handles cross-platform window creation for the tutorial.
     // We could use SDL or platform-specific code instead.
+#ifdef __APPLE__
+    glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
     util::require(glfwInit() == GLFW_TRUE, "Failed to initialize GLFW");
 
     // Vulkan creates the rendering surface; GLFW should not create an OpenGL context.

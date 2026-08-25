@@ -327,6 +327,9 @@ class VulkanApplication
 #if PLATFORM_DESKTOP
 	void initWindow()
 	{
+#ifdef __APPLE__
+		glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);

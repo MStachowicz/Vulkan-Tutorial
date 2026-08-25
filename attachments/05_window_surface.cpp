@@ -53,6 +53,9 @@ class HelloTriangleApplication
 
 	void initWindow()
 	{
+#ifdef __APPLE__
+		glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -128,11 +131,15 @@ class HelloTriangleApplication
 			throw std::runtime_error("Required extension not supported: " + std::string(*unsupportedPropertyIt));
 		}
 
-		vk::InstanceCreateInfo createInfo{.pApplicationInfo        = &appInfo,
-		                                  .enabledLayerCount       = static_cast<uint32_t>(requiredLayers.size()),
-		                                  .ppEnabledLayerNames     = requiredLayers.data(),
-		                                  .enabledExtensionCount   = static_cast<uint32_t>(requiredExtensions.size()),
-		                                  .ppEnabledExtensionNames = requiredExtensions.data()};
+		vk::InstanceCreateInfo createInfo{
+#ifdef __APPLE__
+		    .flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR,
+#endif
+		    .pApplicationInfo        = &appInfo,
+		    .enabledLayerCount       = static_cast<uint32_t>(requiredLayers.size()),
+		    .ppEnabledLayerNames     = requiredLayers.data(),
+		    .enabledExtensionCount   = static_cast<uint32_t>(requiredExtensions.size()),
+		    .ppEnabledExtensionNames = requiredExtensions.data()};
 		instance = vk::raii::Instance(context, createInfo);
 	}
 
@@ -255,6 +262,9 @@ class HelloTriangleApplication
 		auto     glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 		std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+#ifdef __APPLE__
+		extensions.push_back(vk::KHRPortabilityEnumerationExtensionName);
+#endif
 		if (enableValidationLayers)
 		{
 			extensions.push_back(vk::EXTDebugUtilsExtensionName);

@@ -27,6 +27,9 @@
 
 int main() {
     // Initialize GLFW
+#ifdef __APPLE__
+    glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW\n";
         return 1;

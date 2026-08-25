@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #	include <vulkan/vulkan_raii.hpp>
@@ -35,6 +36,9 @@ class HelloTriangleApplication
 
 	void initWindow()
 	{
+#ifdef __APPLE__
+		glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -72,24 +76,31 @@ class HelloTriangleApplication
 		                                      .apiVersion         = vk::ApiVersion14};
 
 		// Get the required instance extensions from GLFW.
-		uint32_t glfwExtensionCount = 0;
-		auto     glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+		uint32_t                  glfwExtensionCount = 0;
+		auto                      glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+		std::vector<const char *> requiredExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+#ifdef __APPLE__
+		requiredExtensions.push_back(vk::KHRPortabilityEnumerationExtensionName);
+#endif
 
 		// Check if the required GLFW extensions are supported by the Vulkan implementation.
 		auto extensionProperties = context.enumerateInstanceExtensionProperties();
-		for (uint32_t i = 0; i < glfwExtensionCount; ++i)
+		for (auto requiredExtension : requiredExtensions)
 		{
 			if (std::ranges::none_of(extensionProperties,
-			                         [glfwExtension = glfwExtensions[i]](auto const &extensionProperty) { return strcmp(extensionProperty.extensionName, glfwExtension) == 0; }))
+			                         [requiredExtension](auto const &extensionProperty) { return strcmp(extensionProperty.extensionName, requiredExtension) == 0; }))
 			{
-				throw std::runtime_error("Required GLFW extension not supported: " + std::string(glfwExtensions[i]));
+				throw std::runtime_error("Required GLFW extension not supported: " + std::string(requiredExtension));
 			}
 		}
 
 		vk::InstanceCreateInfo createInfo{
+#ifdef __APPLE__
+		    .flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR,
+#endif
 		    .pApplicationInfo        = &appInfo,
-		    .enabledExtensionCount   = glfwExtensionCount,
-		    .ppEnabledExtensionNames = glfwExtensions};
+		    .enabledExtensionCount   = static_cast<uint32_t>(requiredExtensions.size()),
+		    .ppEnabledExtensionNames = requiredExtensions.data()};
 		instance = vk::raii::Instance(context, createInfo);
 	}
 };

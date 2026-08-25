@@ -42,6 +42,9 @@ public:
 private:
     void initialize() {
         // Initialize GLFW window
+#ifdef __APPLE__
+        glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         window = glfwCreateWindow(1280, 720, "Image Classifier - MobileNetV2", nullptr, nullptr);

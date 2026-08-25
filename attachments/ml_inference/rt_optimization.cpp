@@ -621,6 +621,9 @@ private:
 };
 
 int main() {
+#ifdef __APPLE__
+    glfwInitVulkanLoader(vkGetInstanceProcAddr);
+#endif
     if (!glfwInit()) return 1;
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow* window = glfwCreateWindow(1280, 720, "Vulkan RT Optimization Demo", nullptr, nullptr);
