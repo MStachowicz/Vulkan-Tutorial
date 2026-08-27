@@ -11,8 +11,14 @@ import vulkan_hpp;
 
 class HelloTriangleApplication
 {
+	std::unique_ptr<GLFWwindow, void (*)(GLFWwindow *)> window;
+	vk::raii::Context context;
+	vk::raii::Instance instance;
+
 public:
-	HelloTriangleApplication() : window(nullptr, glfwDestroyWindow) {}
+	HelloTriangleApplication()
+		: window{nullptr, glfwDestroyWindow}, context{}, instance{nullptr}
+	{}
 
 	void run()
 	{
@@ -23,8 +29,6 @@ public:
 	}
 
 private:
-	std::unique_ptr<GLFWwindow, void (*)(GLFWwindow *)> window;
-
 	void initWindow()
 	{
 #ifdef __APPLE__
@@ -46,6 +50,46 @@ private:
 
 	void initVulkan()
 	{
+		constexpr vk::ApplicationInfo appInfo{.pApplicationName = "Hello Triangle",
+											  .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+											  .pEngineName = "No Engine",
+											  .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+											  .apiVersion = vk::ApiVersion14};
+
+		// Get the required instance extensions from GLFW.
+		uint32_t GLFWExtensionsCount = 0;
+		auto glfwExtensions = glfwGetRequiredInstanceExtensions(&GLFWExtensionsCount);
+
+		// Add the KHR portability enumeration extension to the list of required extensions.
+		std::vector<const char *> requiredExtensions(glfwExtensions, glfwExtensions + GLFWExtensionsCount);
+#ifdef __APPLE__
+		requiredExtensions.push_back(vk::KHRPortabilityEnumerationExtensionName);
+#endif
+
+		// Check if the required extensions are supported by the Vulkan implementation.
+		auto extensionProperties = context.enumerateInstanceExtensionProperties();
+		for (uint32_t i = 0; i < requiredExtensions.size(); ++i)
+		{
+			if (std::ranges::none_of(extensionProperties,
+									 [requiredExtension = requiredExtensions[i]](auto const &extensionProperty)
+									 { return strcmp(extensionProperty.extensionName, requiredExtension) == 0; }))
+			{
+				throw std::runtime_error("ERROR: Required GLFW extension not supported: " + std::string(requiredExtensions[i]));
+			}
+		}
+
+		vk::InstanceCreateFlags flags = {};
+#ifdef __APPLE__
+		flags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+#endif
+
+		vk::InstanceCreateInfo createInfo{
+			.pApplicationInfo = &appInfo,
+			.flags = flags,
+			.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size()),
+			.ppEnabledExtensionNames = requiredExtensions.data()};
+
+		instance = vk::raii::Instance(context, createInfo);
 	}
 
 	void mainLoop()
@@ -53,6 +97,10 @@ private:
 		while (!glfwWindowShouldClose(window.get()))
 		{
 			glfwPollEvents();
+			if (glfwGetKey(window.get(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
+			{
+				glfwSetWindowShouldClose(window.get(), GLFW_TRUE);
+			}
 		}
 	}
 
@@ -72,7 +120,7 @@ int main()
 	}
 	catch (const std::exception &e)
 	{
-		std::cerr << e.what() << std::endl;
+		std::cerr << "ERROR: " << e.what() << std::endl;
 		return EXIT_FAILURE;
 	}
 
