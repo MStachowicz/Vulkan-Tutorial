@@ -28,11 +28,30 @@ AllowShortCaseLabelsOnASingleLine: 'true'
 AllowShortBlocksOnASingleLine: 'Always'
 
 # Always indent after braces.
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: 'true'
+  AfterClass: 'true'
+  AfterControlStatement: Always
+  AfterEnum: 'true'
+  AfterExternBlock: 'true'
+  AfterFunction: 'true'
+  AfterNamespace: 'true'
+  AfterObjCDeclaration: 'true'
+  AfterStruct: 'true'
+  AfterUnion: 'true'
+  BeforeCatch: 'true'
+  BeforeElse: 'true'
+  BeforeLambdaBody: 'true'
+  BeforeWhile: 'false'
+  IndentBraces: 'false'
+  SplitEmptyFunction: 'false'
+  SplitEmptyRecord: 'true'
+  SplitEmptyNamespace: 'true'
 NamespaceIndentation: All
 AlignConsecutiveAssignments: 'true'
+AlignAfterOpenBracket: 'false'
 BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
-BeforeLambdaBody: 'false'
-LambdaBodyIndentation: 'OuterScope'
-...
+LambdaBodyIndentation: 'Signature'
