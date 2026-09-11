@@ -231,6 +231,51 @@ static vk::raii::PhysicalDevice pickPhysicalDevice(const vk::raii::Instance& ins
 	return *devIter;
 }
 
+static uint32_t getGraphicsQueueFamilyIndex(const vk::raii::PhysicalDevice& physicalDevice)
+{
+	const auto queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+	const auto graphicsQueueFamilyProperty = std::ranges::find_if(queueFamilyProperties, [](const auto& qfp)
+	    { return (qfp.queueFlags & vk::QueueFlagBits::eGraphics) != static_cast<vk::QueueFlags>(0); });
+	if (graphicsQueueFamilyProperty == queueFamilyProperties.end())
+		throw std::runtime_error("Vulkan: Failed to find a graphics queue family!");
+
+	return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
+}
+
+static vk::raii::Device getLogicalDevice(const vk::raii::PhysicalDevice& physicalDevice, uint32_t graphicsQueueFamilyIndex)
+{
+	float queuePriority              = 0.5f;
+	unsigned int queueCount          = 1;
+
+	vk::DeviceQueueCreateInfo deviceQueueCreateInfo{
+	    .queueFamilyIndex = graphicsQueueFamilyIndex,
+	    .queueCount       = queueCount,
+	    .pQueuePriorities = &queuePriority};
+
+	// Create a chain of feature structures
+	vk::StructureChain<vk::PhysicalDeviceFeatures2,
+	    vk::PhysicalDeviceVulkan11Features,
+	    vk::PhysicalDeviceVulkan13Features,
+	    vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
+	    featureChain = {
+	        {},                             // vk::PhysicalDeviceFeatures2 (empty for now)
+	        {.shaderDrawParameters = true}, // Enable shader draw parameters from Vulkan 1.1
+	        {.dynamicRendering = true},     // Enable dynamic rendering from Vulkan 1.3
+	        {.extendedDynamicState = true}  // Enable extended dynamic state from the extension
+	    };
+
+	std::vector<const char*> requiredDeviceExtension = {vk::KHRSwapchainExtensionName};
+
+	vk::DeviceCreateInfo deviceCreateInfo{
+	    .pNext                   = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
+	    .queueCreateInfoCount    = 1,
+	    .pQueueCreateInfos       = &deviceQueueCreateInfo,
+	    .enabledExtensionCount   = static_cast<uint32_t>(requiredDeviceExtension.size()),
+	    .ppEnabledExtensionNames = requiredDeviceExtension.data()};
+
+	return vk::raii::Device{physicalDevice, deviceCreateInfo};
+}
+
 class HelloTriangleApplication
 {
 	GLFWRuntime glfwRuntime;
@@ -239,6 +284,9 @@ class HelloTriangleApplication
 	vk::raii::Instance instance;
 	vk::raii::DebugUtilsMessengerEXT debugMessenger;
 	vk::raii::PhysicalDevice physicalDevice;
+	uint32_t graphicsQueueFamilyIndex;
+	vk::raii::Device logicalDevice;
+	vk::raii::Queue graphicsQueue;
 
 public:
 	HelloTriangleApplication()
@@ -248,6 +296,9 @@ public:
 	    , instance{getVulkanInstance(context, glfwRuntime)}
 	    , debugMessenger{getMessenger(instance)}
 	    , physicalDevice{pickPhysicalDevice(instance)}
+	    , graphicsQueueFamilyIndex{getGraphicsQueueFamilyIndex(physicalDevice)}
+	    , logicalDevice{getLogicalDevice(physicalDevice, graphicsQueueFamilyIndex)}
+	    , graphicsQueue{logicalDevice, graphicsQueueFamilyIndex, 0}
 	{}
 
 	void run()
